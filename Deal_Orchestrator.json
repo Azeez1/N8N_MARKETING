@@ -1,0 +1,113 @@
+{
+  "name": "Deal_Orchestrator",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "watch",
+        "resource": "message",
+        "filters": {"search": "pdf"}
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1,
+      "position": [-400,0],
+      "id": "gmail_trigger",
+      "name": "Email Trigger"
+    },
+    {
+      "parameters": {
+        "workflowId": {"__rl": true, "value": "ModuleDocumentProcessing", "mode": "list", "cachedResultName": "Module_Document_Processing"}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [-200,0],
+      "id": "exec_doc",
+      "name": "Document Processing"
+    },
+    {
+      "parameters": {
+        "workflowId": {"__rl": true, "value": "ModuleAIAnalysis", "mode": "list", "cachedResultName": "Module_AI_Analysis"}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [0,0],
+      "id": "exec_ai",
+      "name": "AI Analysis"
+    },
+    {
+      "parameters": {
+        "workflowId": {"__rl": true, "value": "ModuleQuickEnrichment", "mode": "list", "cachedResultName": "Module_Quick_Enrichment"}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [200,0],
+      "id": "exec_enrich",
+      "name": "Quick Enrichment"
+    },
+    {
+      "parameters": {
+        "workflowId": {"__rl": true, "value": "ModuleCriteriaMatching", "mode": "list", "cachedResultName": "Module_Criteria_Matching"}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [400,0],
+      "id": "exec_match",
+      "name": "Criteria Match"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [{"value1": "={{$json.score < 70}}", "operation": "isTrue"}]
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [600,0],
+      "id": "if_fit",
+      "name": "Fit?"
+    },
+    {
+      "parameters": {
+        "workflowId": {"__rl": true, "value": "ModuleNoFitHandler", "mode": "list", "cachedResultName": "Module_NoFit_Handler"}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [800,-100],
+      "id": "exec_nofit",
+      "name": "NoFit Handler"
+    },
+    {
+      "parameters": {
+        "workflowId": {"__rl": true, "value": "ModuleFitHandler", "mode": "list", "cachedResultName": "Module_Fit_Handler"}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [800,100],
+      "id": "exec_fit",
+      "name": "Fit Handler"
+    },
+    {
+      "parameters": {
+        "workflowId": {"__rl": true, "value": "ModuleLogging", "mode": "list", "cachedResultName": "Module_Logging"}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [1000,0],
+      "id": "exec_log",
+      "name": "Log"
+    }
+  ],
+  "connections": {
+    "Email Trigger": {"main": [[{"node":"Document Processing","type":"main","index":0}]]},
+    "Document Processing": {"main": [[{"node":"AI Analysis","type":"main","index":0}]]},
+    "AI Analysis": {"main": [[{"node":"Quick Enrichment","type":"main","index":0}]]},
+    "Quick Enrichment": {"main": [[{"node":"Criteria Match","type":"main","index":0}]]},
+    "Criteria Match": {"main": [[{"node":"Fit?","type":"main","index":0}]]},
+    "Fit?": {"main": [[{"node":"NoFit Handler","type":"main","index":0}], [{"node":"Fit Handler","type":"main","index":0}]]},
+    "NoFit Handler": {"main": [[{"node":"Log","type":"main","index":0}]]},
+    "Fit Handler": {"main": [[{"node":"Log","type":"main","index":0}]]}
+  },
+  "active": false,
+  "settings": {"executionOrder":"v1"},
+  "versionId": "orchestrator_001",
+  "id": "DealOrchestrator"
+}

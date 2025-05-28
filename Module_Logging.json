@@ -1,0 +1,28 @@
+{
+  "name": "Module_Logging",
+  "nodes": [
+    {
+      "parameters": {"inputSource":"passthrough"},
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [0,0],
+      "id": "trigger",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {"functionCode":"return {processed:true};"},
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [200,0],
+      "id": "log_func",
+      "name": "Log Metrics"
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {"main":[[{"node":"Log Metrics","type":"main","index":0}]]}
+  },
+  "active": false,
+  "settings": {"executionOrder":"v1"},
+  "versionId": "module_log_001",
+  "id": "ModuleLogging"
+}

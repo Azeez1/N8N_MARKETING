@@ -1,0 +1,45 @@
+{
+  "name": "Module_Document_Processing",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [0,0],
+      "id": "trigger",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "operation": "extractText",
+        "binaryPropertyName": "attachment"
+      },
+      "type": "n8n-nodes-base.pdfExtract",
+      "typeVersion": 1,
+      "position": [200,0],
+      "id": "pdf_extract",
+      "name": "PDF Extract"
+    },
+    {
+      "parameters": {
+        "operation": "ocr",
+        "binaryPropertyName": "attachment"
+      },
+      "type": "n8n-nodes-base.tesseract",
+      "typeVersion": 1,
+      "position": [400,0],
+      "id": "ocr_fallback",
+      "name": "OCR Fallback"
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {"main":[[{"node":"PDF Extract","type":"main","index":0}]]},
+    "PDF Extract": {"main":[[{"node":"OCR Fallback","type":"main","index":0}]]}
+  },
+  "active": false,
+  "settings": {"executionOrder":"v1"},
+  "versionId": "module_doc_001",
+  "id": "ModuleDocumentProcessing"
+}
