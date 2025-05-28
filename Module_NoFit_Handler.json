@@ -1,0 +1,46 @@
+{
+  "name": "Module_NoFit_Handler",
+  "nodes": [
+    {
+      "parameters": {"inputSource":"passthrough"},
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [0,0],
+      "id": "trigger",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {"operation":"create","resource":"page","title":"={{$json.company}}"},
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 1,
+      "position": [200,0],
+      "id": "notion_page",
+      "name": "Create Notion"
+    },
+    {
+      "parameters": {"operation":"send","message":"Decline email for {{$json.company}}"},
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 1,
+      "position": [400,0],
+      "id": "send_decline",
+      "name": "Send Decline"
+    },
+    {
+      "parameters": {"resource":"message","operation":"post","text":"Deal {{$json.company}} marked no-fit"},
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [600,0],
+      "id": "slack_alert",
+      "name": "Slack Notify"
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {"main":[[{"node":"Create Notion","type":"main","index":0}]]},
+    "Create Notion": {"main":[[{"node":"Send Decline","type":"main","index":0}]]},
+    "Send Decline": {"main":[[{"node":"Slack Notify","type":"main","index":0}]]}
+  },
+  "active": false,
+  "settings": {"executionOrder":"v1"},
+  "versionId": "module_nofit_001",
+  "id": "ModuleNoFitHandler"
+}

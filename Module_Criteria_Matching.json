@@ -1,0 +1,43 @@
+{
+  "name": "Module_Criteria_Matching",
+  "nodes": [
+    {
+      "parameters": {"inputSource":"passthrough"},
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [0,0],
+      "id": "trigger",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "functionCode": "const c={minRevenue:1000000};let score=100;if($json.revenue<c.minRevenue)score-=50;return {score};"
+      },
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [200,0],
+      "id": "calc_score",
+      "name": "Calc Score"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [{"value1":"={{$json.score}}","operation":"less","value2":70}]
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [400,0],
+      "id": "is_fit",
+      "name": "Is Fit?"
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {"main":[[{"node":"Calc Score","type":"main","index":0}]]},
+    "Calc Score": {"main":[[{"node":"Is Fit?","type":"main","index":0}]]}
+  },
+  "active": false,
+  "settings": {"executionOrder":"v1"},
+  "versionId": "module_match_001",
+  "id": "ModuleCriteriaMatching"
+}
