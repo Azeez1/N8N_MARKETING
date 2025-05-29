@@ -1,0 +1,232 @@
+{
+  "name": "Deal_Pipeline_Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "watch",
+        "resource": "message",
+        "filters": {
+          "search": "pdf"
+        }
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1,
+      "position": [-1000,0],
+      "id": "node_email_trigger",
+      "name": "Email Trigger"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Extract sender info and attachment metadata\nreturn {\n  senderName: $json.from.name,\n  senderEmail: $json.from.email,\n  subject: $json.subject,\n  hasAttachment: $json.attachments && $json.attachments.length > 0\n};"
+      },
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [-800,0],
+      "id": "node_extract_meta",
+      "name": "Extract Metadata"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [{
+              "value1": "={{$json.hasAttachment}}",
+              "operation": "isTrue"
+            }]
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [-600,0],
+      "id": "node_if_attachment",
+      "name": "Has PDF?"
+    },
+    {
+      "parameters": {
+        "operation": "extractText",
+        "binaryPropertyName": "attachment",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.pdfExtract",
+      "typeVersion": 1,
+      "position": [-400,-100],
+      "id": "node_pdf_extract",
+      "name": "PDF Extract"
+    },
+    {
+      "parameters": {
+        "operation": "ocr",
+        "binaryPropertyName": "attachment"
+      },
+      "type": "n8n-nodes-base.tesseract",
+      "typeVersion": 1,
+      "position": [-400,100],
+      "id": "node_ocr",
+      "name": "OCR Fallback"
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "prompt": "Extract company info, metrics, deal type and summary from the following text:\n{{$json.text}}",
+        "responseFormat": "json"
+      },
+      "type": "n8n-nodes-base.openai",
+      "typeVersion": 2,
+      "position": [-200,0],
+      "id": "node_ai_analysis",
+      "name": "AI Analysis"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Determine if critical fields are missing\nconst required = ['company','revenue','ebitda','dealType'];\nconst missing = required.filter(f => !$json[f]);\nreturn {missing};"
+      },
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [0,0],
+      "id": "node_check_missing",
+      "name": "Check Missing"
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "https://api.perplexity.ai/search",
+        "options": {"timeout":5000},
+        "jsonParameters": true,
+        "bodyParametersJson": "={\"query\": \"{{$json.missing.join(', ')}}\"}"
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [200,-100],
+      "id": "node_enrich",
+      "name": "Quick Enrichment"
+    },
+    {
+      "parameters": {"mode": "mergeByIndex"},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 1,
+      "position": [400,0],
+      "id": "node_merge",
+      "name": "Merge Data"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Calculate fit score\nconst criteria = {sector: 'Technology', geography: 'US', minRevenue: 1000000};\nlet score = 100;\nif ($json.revenue < criteria.minRevenue) score -= 50;\nreturn {score};"
+      },
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [600,0],
+      "id": "node_fit_score",
+      "name": "Criteria Match"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [{
+              "value1": "={{$json.score}}",
+              "operation": "less",
+              "value2": 70
+            }]
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [800,0],
+      "id": "node_if_fit",
+      "name": "Fit?"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "resource": "page",
+        "title": "={{$json.company}}",
+        "properties": {}
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 1,
+      "position": [1000,-200],
+      "id": "node_nofit_notion",
+      "name": "NoFit Notion"
+    },
+    {
+      "parameters": {"operation": "send","message": "Decline email for {{$json.company}}"},
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 1,
+      "position": [1200,-200],
+      "id": "node_decline_email",
+      "name": "Draft Decline"
+    },
+    {
+      "parameters": {"resource": "message","operation": "post","text": "Deal {{$json.company}} marked as no-fit"},
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [1400,-200],
+      "id": "node_slack_nofit",
+      "name": "Slack NoFit"
+    },
+    {
+      "parameters": {"requestMethod": "POST","url": "https://api.perplexity.ai/deepsearch","jsonParameters": true,"bodyParametersJson": "={\"query\": \"{{$json.company}}\"}"},
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [1000,200],
+      "id": "node_deep_research",
+      "name": "Deep Research"
+    },
+    {
+      "parameters": {"model": "gpt-4o","prompt": "Create investment memo for {{$json.company}} using research: {{$json.data}}","responseFormat": "text"},
+      "type": "n8n-nodes-base.openai",
+      "typeVersion": 2,
+      "position": [1200,200],
+      "id": "node_generate_memo",
+      "name": "Generate Memo"
+    },
+    {
+      "parameters": {"operation": "create","resource": "page","title": "={{$json.company}}","properties": {}},
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 1,
+      "position": [1400,200],
+      "id": "node_fit_notion",
+      "name": "Fit Notion"
+    },
+    {
+      "parameters": {"resource": "message","operation": "post","text": "Deal {{$json.company}} ready for review"},
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [1600,200],
+      "id": "node_slack_fit",
+      "name": "Slack Fit"
+    },
+    {
+      "parameters": {"functionCode": "// Log metrics\nreturn {processed: true};"},
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1800,0],
+      "id": "node_log",
+      "name": "Metrics Log"
+    }
+  ],
+  "connections": {
+    "Email Trigger": {"main": [[{"node": "Extract Metadata", "type": "main", "index": 0}]]},
+    "Extract Metadata": {"main": [[{"node": "Has PDF?", "type": "main", "index": 0}]]},
+    "Has PDF?": {"main": [[{"node": "PDF Extract", "type": "main", "index": 0}], [{"node": "Metrics Log", "type": "main", "index": 0}]]},
+    "PDF Extract": {"main": [[{"node": "AI Analysis", "type": "main", "index": 0}]]},
+    "OCR Fallback": {"main": [[{"node": "AI Analysis", "type": "main", "index": 0}]]},
+    "AI Analysis": {"main": [[{"node": "Check Missing", "type": "main", "index": 0}]]},
+    "Check Missing": {"main": [[{"node": "Quick Enrichment", "type": "main", "index": 0}], [{"node": "Criteria Match", "type": "main", "index": 0}]]},
+    "Quick Enrichment": {"main": [[{"node": "Merge Data", "type": "main", "index": 0}]]},
+    "Merge Data": {"main": [[{"node": "Criteria Match", "type": "main", "index": 0}]]},
+    "Criteria Match": {"main": [[{"node": "Fit?", "type": "main", "index": 0}]]},
+    "Fit?": {"main": [[{"node": "NoFit Notion", "type": "main", "index": 0}], [{"node": "Deep Research", "type": "main", "index": 0}]]},
+    "NoFit Notion": {"main": [[{"node": "Draft Decline", "type": "main", "index": 0}]]},
+    "Draft Decline": {"main": [[{"node": "Slack NoFit", "type": "main", "index": 0}]]},
+    "Slack NoFit": {"main": [[{"node": "Metrics Log", "type": "main", "index": 0}]]},
+    "Deep Research": {"main": [[{"node": "Generate Memo", "type": "main", "index": 0}]]},
+    "Generate Memo": {"main": [[{"node": "Fit Notion", "type": "main", "index": 0}]]},
+    "Fit Notion": {"main": [[{"node": "Slack Fit", "type": "main", "index": 0}]]},
+    "Slack Fit": {"main": [[{"node": "Metrics Log", "type": "main", "index": 0}]]}
+  },
+  "active": false,
+  "settings": {"executionOrder": "v1"},
+  "versionId": "12345678-1234-5678-1234-567812345678",
+  "meta": {"templateCredsSetupCompleted": false},
+  "id": "DealPipeline001",
+  "tags": []
+}
