@@ -1,608 +1,135 @@
 {
-  "name": "Bendly Project_v3",
+  "name": "Bendly_Project_v3",
   "nodes": [
     {
       "parameters": {
-        "pollTimes": {
-          "item": [
-            {
-              "mode": "everyHour"
-            }
-          ]
-        },
-        "simple": false,
-        "filters": {
-          "labelIds": [
-            "Label_6466673297300644719"
-          ],
-          "q": "has:attachment"
-        },
-        "options": {
-          "dataPropertyAttachmentsPrefixName": "attachment_",
-          "downloadAttachments": true
-        }
+        "operation": "watch",
+        "resource": "message",
+        "filters": {"search": "has:attachment"}
       },
       "type": "n8n-nodes-base.gmailTrigger",
-      "typeVersion": 1.2,
-      "position": [
-        -180,
-        -660
-      ],
-      "id": "4f90857b-ae6a-4386-a0f8-829432df3835",
-      "name": "Gmail Trigger",
-      "credentials": {
-        "gmailOAuth2": {
-          "id": "1t8C9DsZvFGKtqqs",
-          "name": "Gmail account 2"
-        }
-      }
+      "typeVersion": 1,
+      "position": [-500,0],
+      "id": "gmail_trigger",
+      "name": "Email Trigger"
+    },
+    {
+      "parameters": {
+        "functionCode": "return {deal:{sender:$json.from,address:$json.fromEmail,state:'ingested'}};"
+      },
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [-300,0],
+      "id": "init_deal",
+      "name": "Init Deal"
+    },
+    {
+      "parameters": {
+        "workflowId": {"__rl":true,"value":"ModuleDocumentProcessing","mode":"list","cachedResultName":"Module_Document_Processing"}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [-100,0],
+      "id": "exec_doc",
+      "name": "Document Processing"
+    },
+    {
+      "parameters": {
+        "workflowId": {"__rl":true,"value":"ModuleAIAnalysis","mode":"list","cachedResultName":"Module_AI_Analysis"}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [100,0],
+      "id": "exec_ai",
+      "name": "AI Analysis"
+    },
+    {
+      "parameters": {
+        "workflowId": {"__rl":true,"value":"ModuleQuickEnrichment","mode":"list","cachedResultName":"Module_Quick_Enrichment"}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [300,0],
+      "id": "exec_enrich",
+      "name": "Quick Enrichment"
+    },
+    {
+      "parameters": {
+        "workflowId": {"__rl":true,"value":"ModuleCriteriaMatching","mode":"list","cachedResultName":"Module_Criteria_Matching"}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [500,0],
+      "id": "exec_match",
+      "name": "Criteria Match"
     },
     {
       "parameters": {
         "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 2
-          },
-          "conditions": [
-            {
-              "id": "3736d496-01a0-4546-80ad-96264e03b75a",
-              "leftValue": "={{$('Gmail Trigger').item.binary}}",
-              "rightValue": "",
-              "operator": {
-                "type": "object",
-                "operation": "exists",
-                "singleValue": true
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.filter",
-      "typeVersion": 2.2,
-      "position": [
-        480,
-        -620
-      ],
-      "id": "504e3f40-4fe0-4847-9149-d94851105acb",
-      "name": "Filter"
-    },
-    {
-      "parameters": {
-        "jsCode": "// This runs once with ALL items from Filter in `items`\nconst output = [];\n\nfor (const item of items) {\n  const { json, binary = {} } = item;\n  // For each attachment key, push a new item\n  for (const key of Object.keys(binary)) {\n    output.push({\n      json,\n      binary: { data: binary[key] },\n    });\n  }\n}\n\n// Return the array of split+normalized items\nreturn output;\n"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        900,
-        -540
-      ],
-      "id": "7f28f81a-2134-412b-853f-ce30c6dc25e8",
-      "name": "Code"
-    },
-    {
-      "parameters": {
-        "operation": "binaryToPropery",
-        "binaryPropertyName": "=data",
-        "options": {
-          "keepSource": "binary"
+          "boolean": [{"value1":"={{$json.score < 70}}","operation":"isTrue"}]
         }
       },
-      "type": "n8n-nodes-base.extractFromFile",
+      "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [
-        1360,
-        -600
-      ],
-      "id": "556631d2-96cd-4e85-b6d1-2ddafa88724f",
-      "name": "Extract from File"
+      "position": [700,0],
+      "id": "if_fit",
+      "name": "Fit?"
     },
     {
       "parameters": {
-        "rules": {
-          "values": [
-            {
-              "conditions": {
-                "options": {
-                  "caseSensitive": true,
-                  "leftValue": "",
-                  "typeValidation": "strict",
-                  "version": 2
-                },
-                "conditions": [
-                  {
-                    "id": "2374cb0d-576b-4ef6-9abd-2c05e980f64a",
-                    "leftValue": "={{$binary.data.fileExtension}}",
-                    "rightValue": "pdf",
-                    "operator": {
-                      "type": "string",
-                      "operation": "equals",
-                      "name": "filter.operator.equals"
-                    }
-                  }
-                ],
-                "combinator": "and"
-              }
-            },
-            {
-              "conditions": {
-                "options": {
-                  "caseSensitive": true,
-                  "leftValue": "",
-                  "typeValidation": "strict",
-                  "version": 2
-                },
-                "conditions": [
-                  {
-                    "id": "8dbf05f9-da48-4071-bb27-b7390e936026",
-                    "leftValue": "={{$binary.data.fileExtension}}",
-                    "rightValue": "x",
-                    "operator": {
-                      "type": "string",
-                      "operation": "equals",
-                      "name": "filter.operator.equals"
-                    }
-                  }
-                ],
-                "combinator": "and"
-              }
-            },
-            {
-              "conditions": {
-                "options": {
-                  "caseSensitive": true,
-                  "leftValue": "",
-                  "typeValidation": "strict",
-                  "version": 2
-                },
-                "conditions": [
-                  {
-                    "id": "280e8759-2940-4f34-b648-de731d4d20ab",
-                    "leftValue": "={{$binary.data.fileExtension}}",
-                    "rightValue": "txt",
-                    "operator": {
-                      "type": "string",
-                      "operation": "equals",
-                      "name": "filter.operator.equals"
-                    }
-                  }
-                ],
-                "combinator": "and"
-              }
-            }
-          ]
-        },
-        "options": {
-          "allMatchingOutputs": true
-        }
+        "workflowId": {"__rl":true,"value":"ModuleNoFitHandler","mode":"list","cachedResultName":"Module_NoFit_Handler"}
       },
-      "type": "n8n-nodes-base.switch",
-      "typeVersion": 3.2,
-      "position": [
-        1760,
-        -620
-      ],
-      "id": "7b19ccc9-1eb6-4fe3-9b75-ad4e17545962",
-      "name": "Switch"
-    },
-    {
-      "parameters": {
-        "operation": "pdf",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.extractFromFile",
+      "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1,
-      "position": [
-        2500,
-        -960
-      ],
-      "id": "9bd71df3-9df3-40ca-8be4-9e54b3d34945",
-      "name": "Extract from File1"
+      "position": [900,-100],
+      "id": "exec_nofit",
+      "name": "NoFit Handler"
     },
     {
       "parameters": {
-        "operation": "xlsx",
-        "options": {}
+        "workflowId": {"__rl":true,"value":"ModuleDeepResearch","mode":"list","cachedResultName":"Module_Deep_Research"}
       },
-      "type": "n8n-nodes-base.extractFromFile",
+      "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1,
-      "position": [
-        2600,
-        -720
-      ],
-      "id": "6478a013-0fe4-49be-ab35-2d41485cbf3e",
-      "name": "Extract from File2"
+      "position": [900,50],
+      "id": "exec_deep",
+      "name": "Deep Research"
     },
     {
       "parameters": {
-        "operation": "text",
-        "options": {}
+        "workflowId": {"__rl":true,"value":"ModuleFitHandler","mode":"list","cachedResultName":"Module_Fit_Handler"}
       },
-      "type": "n8n-nodes-base.extractFromFile",
+      "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1,
-      "position": [
-        2600,
-        -480
-      ],
-      "id": "934f6bb1-ace1-4ad3-9861-140fd62a0952",
-      "name": "Extract from File3"
+      "position": [1100,50],
+      "id": "exec_fit",
+      "name": "Fit Handler"
     },
     {
       "parameters": {
-        "promptType": "define",
-        "text": "=You are a private equity analyst. here is the raw document text{{ $json.text }}\n\n1. Write a 100–150 word executive summary.\n2. Indicate \"deal_fit\": \"yes\" or \"no\" (criteria: revenue > $5M AND EBITDA > $1M).\n3. List top 3 key metrics. ",
-        "hasOutputParser": true
+        "workflowId": {"__rl":true,"value":"ModuleLogging","mode":"list","cachedResultName":"Module_Logging"}
       },
-      "type": "@n8n/n8n-nodes-langchain.chainLlm",
-      "typeVersion": 1.6,
-      "position": [
-        3080,
-        -640
-      ],
-      "id": "4cb360f9-f5a7-4bce-b71e-2c7e3766d749",
-      "name": "Basic LLM Chain"
-    },
-    {
-      "parameters": {
-        "jsonSchemaExample": "{\n  \"summary\": \"<string>\",\n  \"deal_fit\": \"<yes|no>\",\n  \"key_metrics\": [\"<string>\", \"<string>\", \"<string>\"]\n}\n"
-      },
-      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
-      "typeVersion": 1.2,
-      "position": [
-        3240,
-        -440
-      ],
-      "id": "99da5e2f-cda9-40a0-8be3-0901623b4063",
-      "name": "Structured Output Parser"
-    },
-    {
-      "parameters": {
-        "model": {
-          "__rl": true,
-          "mode": "list",
-          "value": "gpt-4o-mini"
-        },
-        "options": {}
-      },
-      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
-      "typeVersion": 1.2,
-      "position": [
-        2980,
-        -440
-      ],
-      "id": "57c530e9-548e-4ac2-8cad-62d890e34473",
-      "name": "OpenAI Chat Model",
-      "credentials": {
-        "openAiApi": {
-          "id": "9yrgpAk5t6em7mt2",
-          "name": "OpenAi account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "fieldsToAggregate": {
-          "fieldToAggregate": [
-            {
-              "fieldToAggregate": "output.summary"
-            },
-            {
-              "fieldToAggregate": "output.deal_fit"
-            },
-            {
-              "fieldToAggregate": "output.key_metrics[0]"
-            },
-            {
-              "fieldToAggregate": "output.key_metrics[1]"
-            },
-            {
-              "fieldToAggregate": "output.key_metrics[2]"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.aggregate",
+      "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1,
-      "position": [
-        3540,
-        -680
-      ],
-      "id": "73fa6004-8181-4020-b59a-7816c49a68de",
-      "name": "Aggregate1"
-    },
-    {
-      "parameters": {
-        "jsCode": "// Expect exactly one item coming out of Aggregate1\n// which has arrays: summary, deal_fit, key_metrics\n\nconst data = items[0].json;\n\n// 1) Turn the array of summaries into one big block\nconst combined_summary = Array.isArray(data.summary)\n  ? data.summary.join('\\n\\n')\n  : data.summary;\n\n// 2) Overall deal fit: yes if any is \"yes\"\nconst overall_deal_fit = Array.isArray(data.deal_fit) && data.deal_fit.includes('yes')\n  ? 'yes'\n  : 'no';\n\n// 3) Flatten the metrics (in case they're nested arrays)\nconst combined_key_metrics = Array.isArray(data.key_metrics)\n  ? data.key_metrics.flat()\n  : data.key_metrics;\n\n// 4) Emit a single object\nreturn [\n  {\n    json: {\n      combined_summary,\n      overall_deal_fit,\n      combined_key_metrics\n    }\n  }\n];\n"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        3880,
-        -680
-      ],
-      "id": "f01f7b67-26db-46c2-9957-052a49aab311",
-      "name": "Flatten"
-    },
-    {
-      "parameters": {
-        "jsCode": "// items is the full array of Flatten outputs\nconst combined_summary = items\n  .map(i => i.json.combined_summary)      // pull each string out\n  .filter(s => s && s.trim().length)     // drop any blanks, just in case\n  .join('\\n\\n');                          // join into one big chunk\n\n// return one object with that string\nreturn [\n  {\n    json: { combined_summary\n           }\n  }\n];\n"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        4220,
-        -680
-      ],
-      "id": "1a6bc3e3-a094-4bc0-8d1e-6bb6d138771a",
-      "name": "Code2"
-    },
-    {
-      "parameters": {
-        "promptType": "define",
-        "text": "=You are a senior private equity analyst making a final recommendation. You will be given a summary and a list of key metrics compiled from multiple source documents. Your job is to synthesize this information and apply a strict set of criteria.\n\n**Provided Context:**\nCombined Summary: {{ $json.combined_summary }}\nCombined Key Metrics: {{ $('Flatten').item.json.combined_key_metrics }}\n\n**Your Tasks:**\nPlease produce the following:\n\n1.  **Executive Summary:** Write a single, concise (1500-1000 word) executive summary of the entire deal based on all the provided context.\n2.  **Deal Fit:** Analyze the context to make a final \"deal_fit\" determination. A deal is a \"yes\" **only if both of the following criteria are met:**\n    * The company's revenue is greater than $50 million.\n    * The company operates in the ecommerce industry.\n    If either criterion is not met, the deal is a \"no\".\n3.  **Top 5 Metrics:** Identify and list the top 5 most important key metrics for the deal from the provided context.",
-        "hasOutputParser": true,
-        "options": {}
-      },
-      "type": "@n8n/n8n-nodes-langchain.agent",
-      "typeVersion": 1.9,
-      "position": [
-        4520,
-        -700
-      ],
-      "id": "f981879f-7d88-4111-94c9-8d97ea1be25b",
-      "name": "AI Agent"
-    },
-    {
-      "parameters": {
-        "jsonSchemaExample": "{\n  \"executive_summary\": \"<string>\",\n  \"deal_fit\": \"<\\\"yes\\\" or \\\"no\\\">\",\n  \"top_metrics\": [\"<string>\", \"<string>\", \"<string>\", \"<string>\", \"<string>\"]\n}"
-      },
-      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
-      "typeVersion": 1.2,
-      "position": [
-        4620,
-        -420
-      ],
-      "id": "c1740a46-3d9c-49da-932a-08b591900d0d",
-      "name": "Structured Output Parser1"
-    },
-    {
-      "parameters": {
-        "model": {
-          "__rl": true,
-          "value": "gpt-4.1-mini",
-          "mode": "list",
-          "cachedResultName": "gpt-4.1-mini"
-        },
-        "options": {}
-      },
-      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
-      "typeVersion": 1.2,
-      "position": [
-        4420,
-        -460
-      ],
-      "id": "03d011d6-9322-465e-83d4-810f2b332ea7",
-      "name": "OpenAI Chat Model1",
-      "credentials": {
-        "openAiApi": {
-          "id": "9yrgpAk5t6em7mt2",
-          "name": "OpenAi account"
-        }
-      }
+      "position": [1300,0],
+      "id": "exec_log",
+      "name": "Log"
     }
   ],
-  "pinData": {},
   "connections": {
-    "Gmail Trigger": {
-      "main": [
-        [
-          {
-            "node": "Filter",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Filter": {
-      "main": [
-        [
-          {
-            "node": "Code",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Code": {
-      "main": [
-        [
-          {
-            "node": "Extract from File",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Extract from File": {
-      "main": [
-        [
-          {
-            "node": "Switch",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Switch": {
-      "main": [
-        [
-          {
-            "node": "Extract from File1",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Extract from File2",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Extract from File3",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Extract from File1": {
-      "main": [
-        [
-          {
-            "node": "Basic LLM Chain",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Extract from File2": {
-      "main": [
-        [
-          {
-            "node": "Basic LLM Chain",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Extract from File3": {
-      "main": [
-        [
-          {
-            "node": "Basic LLM Chain",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Structured Output Parser": {
-      "ai_outputParser": [
-        [
-          {
-            "node": "Basic LLM Chain",
-            "type": "ai_outputParser",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "OpenAI Chat Model": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "Basic LLM Chain",
-            "type": "ai_languageModel",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Basic LLM Chain": {
-      "main": [
-        [
-          {
-            "node": "Aggregate1",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Aggregate1": {
-      "main": [
-        [
-          {
-            "node": "Flatten",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Flatten": {
-      "main": [
-        [
-          {
-            "node": "Code2",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Code2": {
-      "main": [
-        [
-          {
-            "node": "AI Agent",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Structured Output Parser1": {
-      "ai_outputParser": [
-        [
-          {
-            "node": "AI Agent",
-            "type": "ai_outputParser",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "OpenAI Chat Model1": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "AI Agent",
-            "type": "ai_languageModel",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "AI Agent": {
-      "main": [
-        []
-      ]
-    }
+    "Email Trigger": {"main": [[{"node":"Init Deal","type":"main","index":0}]]},
+    "Init Deal": {"main": [[{"node":"Document Processing","type":"main","index":0}]]},
+    "Document Processing": {"main": [[{"node":"AI Analysis","type":"main","index":0}]]},
+    "AI Analysis": {"main": [[{"node":"Quick Enrichment","type":"main","index":0}]]},
+    "Quick Enrichment": {"main": [[{"node":"Criteria Match","type":"main","index":0}]]},
+    "Criteria Match": {"main": [[{"node":"Fit?","type":"main","index":0}]]},
+    "Fit?": {"main": [[{"node":"NoFit Handler","type":"main","index":0}], [{"node":"Deep Research","type":"main","index":0}]]},
+    "Deep Research": {"main": [[{"node":"Fit Handler","type":"main","index":0}]]},
+    "NoFit Handler": {"main": [[{"node":"Log","type":"main","index":0}]]},
+    "Fit Handler": {"main": [[{"node":"Log","type":"main","index":0}]]}
   },
   "active": false,
-  "settings": {
-    "executionOrder": "v1"
-  },
-  "versionId": "ceeca2fa-a8ea-40e8-8ecb-527e73142ded",
-  "meta": {
-    "templateCredsSetupCompleted": true,
-    "instanceId": "8d7e4f195bf3ce185fb2c0f9d1d679ceb85d8a160024a4c53914e80e22ccb014"
-  },
-  "id": "ygWyMcgvKxG5APG6",
-  "tags": []
+  "settings": {"executionOrder":"v1"},
+  "versionId": "bendly_v4",
+  "id": "BendlyOrchestrator"
 }
