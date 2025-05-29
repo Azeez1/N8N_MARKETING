@@ -1,0 +1,46 @@
+{
+  "name": "Module_Deep_Research",
+  "nodes": [
+    {
+      "parameters": {"inputSource": "passthrough"},
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [0,0],
+      "id": "trigger",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "https://api.perplexity.ai/deepsearch",
+        "jsonParameters": true,
+        "bodyParametersJson": "={\"query\": \"{{$json.company}} financial performance market competition recent news risks\"}"
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [200,0],
+      "id": "deep_search",
+      "name": "Deep Search"
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o",
+        "prompt": "Write an investment memo for {{$json.company}} based on {{$json.data}}",
+        "responseFormat": "text"
+      },
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 2,
+      "position": [400,0],
+      "id": "memo_llm",
+      "name": "Generate Memo"
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {"main": [[{"node": "Deep Search", "type": "main", "index": 0}]]},
+    "Deep Search": {"main": [[{"node": "Generate Memo", "type": "main", "index": 0}]]}
+  },
+  "active": false,
+  "settings": {"executionOrder": "v1"},
+  "versionId": "module_deep_001",
+  "id": "ModuleDeepResearch"
+}
