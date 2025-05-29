@@ -7,7 +7,10 @@
       },
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1.1,
-      "position": [0,0],
+      "position": [
+        0,
+        0
+      ],
       "id": "trigger",
       "name": "When Executed by Another Workflow"
     },
@@ -16,9 +19,12 @@
         "operation": "extractText",
         "binaryPropertyName": "attachment"
       },
-      "type": "n8n-nodes-base.pdfExtract",
+      "type": "n8n-nodes-base.pdf",
       "typeVersion": 1,
-      "position": [200,0],
+      "position": [
+        200,
+        0
+      ],
       "id": "pdf_extract",
       "name": "PDF Extract"
     },
@@ -27,19 +33,44 @@
         "operation": "ocr",
         "binaryPropertyName": "attachment"
       },
-      "type": "n8n-nodes-base.tesseract",
+      "type": "n8n-nodes-base.tesseractOcr",
       "typeVersion": 1,
-      "position": [400,0],
+      "position": [
+        400,
+        0
+      ],
       "id": "ocr_fallback",
       "name": "OCR Fallback"
     }
   ],
   "connections": {
-    "When Executed by Another Workflow": {"main":[[{"node":"PDF Extract","type":"main","index":0}]]},
-    "PDF Extract": {"main":[[{"node":"OCR Fallback","type":"main","index":0}]]}
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "PDF Extract",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Extract": {
+      "main": [
+        [
+          {
+            "node": "OCR Fallback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
   "active": false,
-  "settings": {"executionOrder":"v1"},
+  "settings": {
+    "executionOrder": "v1"
+  },
   "versionId": "module_doc_001",
   "id": "ModuleDocumentProcessing"
 }

@@ -11,7 +11,10 @@
       },
       "type": "n8n-nodes-base.gmailTrigger",
       "typeVersion": 1,
-      "position": [-1000,0],
+      "position": [
+        -1000,
+        0
+      ],
       "id": "node_email_trigger",
       "name": "Email Trigger"
     },
@@ -21,22 +24,30 @@
       },
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
-      "position": [-800,0],
+      "position": [
+        -800,
+        0
+      ],
       "id": "node_extract_meta",
       "name": "Extract Metadata"
     },
     {
       "parameters": {
         "conditions": {
-          "boolean": [{
+          "boolean": [
+            {
               "value1": "={{$json.hasAttachment}}",
               "operation": "isTrue"
-            }]
+            }
+          ]
         }
       },
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [-600,0],
+      "position": [
+        -600,
+        0
+      ],
       "id": "node_if_attachment",
       "name": "Has PDF?"
     },
@@ -46,9 +57,12 @@
         "binaryPropertyName": "attachment",
         "options": {}
       },
-      "type": "n8n-nodes-base.pdfExtract",
+      "type": "n8n-nodes-base.pdf",
       "typeVersion": 1,
-      "position": [-400,-100],
+      "position": [
+        -400,
+        -100
+      ],
       "id": "node_pdf_extract",
       "name": "PDF Extract"
     },
@@ -57,9 +71,12 @@
         "operation": "ocr",
         "binaryPropertyName": "attachment"
       },
-      "type": "n8n-nodes-base.tesseract",
+      "type": "n8n-nodes-base.tesseractOcr",
       "typeVersion": 1,
-      "position": [-400,100],
+      "position": [
+        -400,
+        100
+      ],
       "id": "node_ocr",
       "name": "OCR Fallback"
     },
@@ -69,9 +86,12 @@
         "prompt": "Extract company info, metrics, deal type and summary from the following text:\n{{$json.text}}",
         "responseFormat": "json"
       },
-      "type": "n8n-nodes-base.openai",
+      "type": "n8n-nodes-base.openAi",
       "typeVersion": 2,
-      "position": [-200,0],
+      "position": [
+        -200,
+        0
+      ],
       "id": "node_ai_analysis",
       "name": "AI Analysis"
     },
@@ -81,7 +101,10 @@
       },
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
-      "position": [0,0],
+      "position": [
+        0,
+        0
+      ],
       "id": "node_check_missing",
       "name": "Check Missing"
     },
@@ -89,22 +112,35 @@
       "parameters": {
         "requestMethod": "POST",
         "url": "https://api.perplexity.ai/search",
-        "options": {"timeout":5000},
+        "options": {
+          "timeout": 5000
+        },
         "jsonParameters": true,
         "bodyParametersJson": "={\"query\": \"{{$json.missing.join(', ')}}\"}"
+       lt3rj8-codex/fix-n8n-json-compatibility-issue
 
+
+       main
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 2,
-      "position": [200,-100],
+      "position": [
+        200,
+        -100
+      ],
       "id": "node_enrich",
       "name": "Quick Enrichment"
     },
     {
-      "parameters": {"mode": "mergeByIndex"},
+      "parameters": {
+        "mode": "mergeByIndex"
+      },
       "type": "n8n-nodes-base.merge",
       "typeVersion": 1,
-      "position": [400,0],
+      "position": [
+        400,
+        0
+      ],
       "id": "node_merge",
       "name": "Merge Data"
     },
@@ -114,23 +150,31 @@
       },
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
-      "position": [600,0],
+      "position": [
+        600,
+        0
+      ],
       "id": "node_fit_score",
       "name": "Criteria Match"
     },
     {
       "parameters": {
         "conditions": {
-          "number": [{
+          "number": [
+            {
               "value1": "={{$json.score}}",
               "operation": "less",
               "value2": 70
-            }]
+            }
+          ]
         }
       },
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [800,0],
+      "position": [
+        800,
+        0
+      ],
       "id": "node_if_fit",
       "name": "Fit?"
     },
@@ -143,92 +187,377 @@
       },
       "type": "n8n-nodes-base.notion",
       "typeVersion": 1,
-      "position": [1000,-200],
+      "position": [
+        1000,
+        -200
+      ],
       "id": "node_nofit_notion",
       "name": "NoFit Notion"
     },
     {
-      "parameters": {"operation": "send","message": "Decline email for {{$json.company}}"},
+      "parameters": {
+        "operation": "send",
+        "message": "Decline email for {{$json.company}}"
+      },
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 1,
-      "position": [1200,-200],
+      "position": [
+        1200,
+        -200
+      ],
       "id": "node_decline_email",
       "name": "Draft Decline"
     },
     {
-      "parameters": {"resource": "message","operation": "post","text": "Deal {{$json.company}} marked as no-fit"},
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "text": "Deal {{$json.company}} marked as no-fit"
+      },
       "type": "n8n-nodes-base.slack",
       "typeVersion": 1,
-      "position": [1400,-200],
+      "position": [
+        1400,
+        -200
+      ],
       "id": "node_slack_nofit",
       "name": "Slack NoFit"
     },
     {
+      lt3rj8-codex/fix-n8n-json-compatibility-issue
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "https://api.perplexity.ai/deepsearch",
+        "jsonParameters": true,
+        "bodyParametersJson": "={\"query\": \"{{$json.company}}\"}"
+      },
+
       "parameters": {"requestMethod": "POST","url": "https://api.perplexity.ai/deepsearch","jsonParameters": true,"bodyParametersJson": "={\"query\": \"{{$json.company}}\"}"},
 
+       main
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 2,
-      "position": [1000,200],
+      "position": [
+        1000,
+        200
+      ],
       "id": "node_deep_research",
       "name": "Deep Research"
     },
     {
-      "parameters": {"model": "gpt-4o","prompt": "Create investment memo for {{$json.company}} using research: {{$json.data}}","responseFormat": "text"},
-      "type": "n8n-nodes-base.openai",
+      "parameters": {
+        "model": "gpt-4o",
+        "prompt": "Create investment memo for {{$json.company}} using research: {{$json.data}}",
+        "responseFormat": "text"
+      },
+      "type": "n8n-nodes-base.openAi",
       "typeVersion": 2,
-      "position": [1200,200],
+      "position": [
+        1200,
+        200
+      ],
       "id": "node_generate_memo",
       "name": "Generate Memo"
     },
     {
-      "parameters": {"operation": "create","resource": "page","title": "={{$json.company}}","properties": {}},
+      "parameters": {
+        "operation": "create",
+        "resource": "page",
+        "title": "={{$json.company}}",
+        "properties": {}
+      },
       "type": "n8n-nodes-base.notion",
       "typeVersion": 1,
-      "position": [1400,200],
+      "position": [
+        1400,
+        200
+      ],
       "id": "node_fit_notion",
       "name": "Fit Notion"
     },
     {
-      "parameters": {"resource": "message","operation": "post","text": "Deal {{$json.company}} ready for review"},
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "text": "Deal {{$json.company}} ready for review"
+      },
       "type": "n8n-nodes-base.slack",
       "typeVersion": 1,
-      "position": [1600,200],
+      "position": [
+        1600,
+        200
+      ],
       "id": "node_slack_fit",
       "name": "Slack Fit"
     },
     {
-      "parameters": {"functionCode": "// Log metrics\nreturn {processed: true};"},
+      "parameters": {
+        "functionCode": "// Log metrics\nreturn {processed: true};"
+      },
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
-      "position": [1800,0],
+      "position": [
+        1800,
+        0
+      ],
       "id": "node_log",
       "name": "Metrics Log"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{$json}}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1,
+      "position": [
+        300,
+        -100
+      ],
+      "id": "node_ai_agent",
+      "name": "AI Agent"
     }
   ],
   "connections": {
-    "Email Trigger": {"main": [[{"node": "Extract Metadata", "type": "main", "index": 0}]]},
-    "Extract Metadata": {"main": [[{"node": "Has PDF?", "type": "main", "index": 0}]]},
-    "Has PDF?": {"main": [[{"node": "PDF Extract", "type": "main", "index": 0}], [{"node": "Metrics Log", "type": "main", "index": 0}]]},
-    "PDF Extract": {"main": [[{"node": "AI Analysis", "type": "main", "index": 0}]]},
-    "OCR Fallback": {"main": [[{"node": "AI Analysis", "type": "main", "index": 0}]]},
-    "AI Analysis": {"main": [[{"node": "Check Missing", "type": "main", "index": 0}]]},
-    "Check Missing": {"main": [[{"node": "Quick Enrichment", "type": "main", "index": 0}], [{"node": "Criteria Match", "type": "main", "index": 0}]]},
-    "Quick Enrichment": {"main": [[{"node": "Merge Data", "type": "main", "index": 0}]]},
-    "Merge Data": {"main": [[{"node": "Criteria Match", "type": "main", "index": 0}]]},
-    "Criteria Match": {"main": [[{"node": "Fit?", "type": "main", "index": 0}]]},
-    "Fit?": {"main": [[{"node": "NoFit Notion", "type": "main", "index": 0}], [{"node": "Deep Research", "type": "main", "index": 0}]]},
-    "NoFit Notion": {"main": [[{"node": "Draft Decline", "type": "main", "index": 0}]]},
-    "Draft Decline": {"main": [[{"node": "Slack NoFit", "type": "main", "index": 0}]]},
-    "Slack NoFit": {"main": [[{"node": "Metrics Log", "type": "main", "index": 0}]]},
-    "Deep Research": {"main": [[{"node": "Generate Memo", "type": "main", "index": 0}]]},
-    "Generate Memo": {"main": [[{"node": "Fit Notion", "type": "main", "index": 0}]]},
-    "Fit Notion": {"main": [[{"node": "Slack Fit", "type": "main", "index": 0}]]},
-    "Slack Fit": {"main": [[{"node": "Metrics Log", "type": "main", "index": 0}]]}
+    "Email Trigger": {
+      "main": [
+        [
+          {
+            "node": "Extract Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Metadata": {
+      "main": [
+        [
+          {
+            "node": "Has PDF?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has PDF?": {
+      "main": [
+        [
+          {
+            "node": "PDF Extract",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Metrics Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Extract": {
+      "main": [
+        [
+          {
+            "node": "AI Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OCR Fallback": {
+      "main": [
+        [
+          {
+            "node": "AI Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Analysis": {
+      "main": [
+        [
+          {
+            "node": "Check Missing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Missing": {
+      "main": [
+        [
+          {
+            "node": "Quick Enrichment",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Criteria Match",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Quick Enrichment": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Data": {
+      "main": [
+        [
+          {
+            "node": "Criteria Match",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Criteria Match": {
+      "main": [
+        [
+          {
+            "node": "Fit?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fit?": {
+      "main": [
+        [
+          {
+            "node": "NoFit Notion",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Deep Research",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "NoFit Notion": {
+      "main": [
+        [
+          {
+            "node": "Draft Decline",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Draft Decline": {
+      "main": [
+        [
+          {
+            "node": "Slack NoFit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack NoFit": {
+      "main": [
+        [
+          {
+            "node": "Metrics Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deep Research": {
+      "main": [
+        [
+          {
+            "node": "Generate Memo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Memo": {
+      "main": [
+        [
+          {
+            "node": "Fit Notion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fit Notion": {
+      "main": [
+        [
+          {
+            "node": "Slack Fit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack Fit": {
+      "main": [
+        [
+          {
+            "node": "Metrics Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Merge Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
   "active": false,
-  "settings": {"executionOrder": "v1"},
+  "settings": {
+    "executionOrder": "v1"
+  },
   "versionId": "12345678-1234-5678-1234-567812345678",
-  "meta": {"templateCredsSetupCompleted": false},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
   "id": "DealPipeline001",
   "tags": []
 }
