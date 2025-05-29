@@ -66,7 +66,11 @@
     {
       "parameters": {
         "model": "gpt-4o-mini",
+        vwuj9h-codex/build-orchestrator-workflow-for-n8n-pipeline
         "prompt": "Extract company info, metrics, deal type and summary from the following text:\n{{$json.text}}",
+        "prompt": "Extract company info, metrics, deal type and summary from the following text:\
+{{$json.text}}",
+     main
         "responseFormat": "json"
       },
       "type": "n8n-nodes-base.openai",
@@ -91,7 +95,11 @@
         "url": "https://api.perplexity.ai/search",
         "options": {"timeout":5000},
         "jsonParameters": true,
+           vwuj9h-codex/build-orchestrator-workflow-for-n8n-pipeline
         "bodyParametersJson": "={\"query\": \"{{$json.missing.join(', ')}}\"}"
+
+        "bodyParametersJson": "={query: '{{$json.missing.join(\', \\')}}'}"
+         main
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 2,
@@ -163,7 +171,11 @@
       "name": "Slack NoFit"
     },
     {
+      vwuj9h-codex/build-orchestrator-workflow-for-n8n-pipeline
       "parameters": {"requestMethod": "POST","url": "https://api.perplexity.ai/deepsearch","jsonParameters": true,"bodyParametersJson": "={\"query\": \"{{$json.company}}\"}"},
+
+      "parameters": {"requestMethod": "POST","url": "https://api.perplexity.ai/deepsearch","jsonParameters": true,"bodyParametersJson": "={query: $json.company}"},
+       main
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 2,
       "position": [1000,200],

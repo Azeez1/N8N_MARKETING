@@ -1,0 +1,45 @@
+{
+  "name": "Module_AI_Analysis",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [0,0],
+      "id": "trigger",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "prompt": "Extract deal info from {{$json.text}}",
+        "responseFormat": "json"
+      },
+      "type": "n8n-nodes-base.openai",
+      "typeVersion": 2,
+      "position": [200,0],
+      "id": "ai_extract",
+      "name": "AI Analysis"
+    },
+    {
+      "parameters": {
+        "functionCode": "const required=['company','revenue'];const missing=required.filter(f=>!$json[f]);return {missing};"
+      },
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [400,0],
+      "id": "check_missing",
+      "name": "Check Missing"
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {"main":[[{"node":"AI Analysis","type":"main","index":0}]]},
+    "AI Analysis": {"main":[[{"node":"Check Missing","type":"main","index":0}]]}
+  },
+  "active": false,
+  "settings": {"executionOrder":"v1"},
+  "versionId": "module_ai_001",
+  "id": "ModuleAIAnalysis"
+}
