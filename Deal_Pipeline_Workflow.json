@@ -117,10 +117,6 @@
         },
         "jsonParameters": true,
         "bodyParametersJson": "={\"query\": \"{{$json.missing.join(', ')}}\"}"
-       lt3rj8-codex/fix-n8n-json-compatibility-issue
-
-
-       main
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 2,
@@ -224,7 +220,6 @@
       "name": "Slack NoFit"
     },
     {
-      lt3rj8-codex/fix-n8n-json-compatibility-issue
       "parameters": {
         "requestMethod": "POST",
         "url": "https://api.perplexity.ai/deepsearch",
@@ -232,9 +227,7 @@
         "bodyParametersJson": "={\"query\": \"{{$json.company}}\"}"
       },
 
-      "parameters": {"requestMethod": "POST","url": "https://api.perplexity.ai/deepsearch","jsonParameters": true,"bodyParametersJson": "={\"query\": \"{{$json.company}}\"}"},
 
-       main
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 2,
       "position": [
