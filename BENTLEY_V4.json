@@ -632,9 +632,8 @@
         "blockUi": {
           "blockValues": [
             {
-              "textContent": "={{ $json.html }}"
-            },
-            {}
+              "textContent": "={{ $json.textContent }}"
+            }
           ]
         },
         "options": {}
@@ -653,6 +652,19 @@
           "name": "Notion account"
         }
       }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Split HTML into 2000 character chunks\nconst html = $json.html || '';\nconst chunkSize = 2000;\nconst itemsOut = [];\nfor (let i = 0; i < html.length; i += chunkSize) {\n  itemsOut.push({ json: { textContent: html.slice(i, i + chunkSize) } });\n}\nreturn itemsOut;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1910,
+        -300
+      ],
+      "id": "3cf8354d-38cb-4669-a99c-d43816e9e980",
+      "name": "Split HTML"
     }
   ],
   "pinData": {},
@@ -932,6 +944,17 @@
       ]
     },
     "HTML1": {
+      "main": [
+        [
+          {
+            "node": "Split HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split HTML": {
       "main": [
         [
           {
