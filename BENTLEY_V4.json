@@ -1,0 +1,964 @@
+{
+  "name": "BENTLEY_V4",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "# 🚀 BENTLEY PROJECT SETUP GUIDE\n\n## Overview\nThis workflow automates investment opportunity screening from email attachments.\n\n## Required Accounts & API Keys:\n\n### 1. **Gmail Access** (Choose one):\n   - **Option A - Gmail API**: \n     - Go to Google Cloud Console\n     - Create new project or select existing\n     - Enable Gmail API\n     - Create OAuth2 credentials\n     - In n8n: Settings → Credentials → New → Google OAuth2\n   \n   - **Option B - IMAP**:\n     - Gmail Settings → See all settings → Forwarding and POP/IMAP\n     - Enable IMAP\n     - Generate App Password: Google Account → Security → 2-Step Verification → App passwords\n     - In n8n: Use email + app password\n\n### 2. **OpenAI API**:\n   - Sign up at https://platform.openai.com\n   - Go to API Keys section\n   - Create new secret key\n   - Add funds to account ($10-20 for testing)\n   - In n8n: Settings → Credentials → New → OpenAI → Add your API key\n\n### 3. **Perplexity API**:\n   - Sign up at https://www.perplexity.ai/settings/api\n   - Generate API key\n   - Note: $5 = 1000 requests with small model\n   - In n8n: Settings → Credentials → New → HTTP Request (Header Auth)\n     - Name: Perplexity API\n     - Header Name: Authorization\n     - Header Value: Bearer YOUR_API_KEY\n\n### 4. **Investment Criteria Configuration**:\n   - Edit the 'Investment Criteria Config' node below\n   - Adjust thresholds for your needs\n   - All amounts in USD\n\n## Workflow Sections:\n1. **Module 1**: Email Ingestion (Gmail Trigger → Validate Attachment)\n2. **Module 2**: Document Processing (Extract PDF Text)\n3. **Module 3**: AI Analysis (GPT-4o-mini extraction)\n4. **Module 4**: Data Enrichment (Conditional Perplexity search)\n5. **Module 5**: Criteria Matching (Investment fit scoring)\n\n## Testing:\n1. Send test email with PDF attachment to monitored inbox\n2. Subject should contain keywords: 'Investment' or 'Opportunity' or 'Deal'\n3. Monitor execution in n8n\n\n## Cost Estimates:\n- OpenAI: ~$0.01 per email processed\n- Perplexity: ~$0.005 per enrichment\n- Total: ~$0.015 per deal\n\n## Support:\n- Check execution logs for errors\n- Ensure all credentials are properly configured\n- Test with simple PDFs first",
+        "height": 650,
+        "width": 600
+      },
+      "id": "39ae920d-ebe3-498d-b048-f6ed9fd72b3e",
+      "name": "📋 SETUP INSTRUCTIONS - READ FIRST",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -2440,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "labelIds": [
+            "Label_6466673297300644719"
+          ],
+          "q": "has:attachment"
+        },
+        "options": {
+          "dataPropertyAttachmentsPrefixName": "attachment_",
+          "downloadAttachments": true
+        }
+      },
+      "id": "55ffcd43-c8a7-4e58-aa50-e5f58f492053",
+      "name": "Gmail Trigger",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1800,
+        540
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1t8C9DsZvFGKtqqs",
+          "name": "Gmail account 2"
+        }
+      },
+      "notes": "MODULE 1: Email Ingestion\n- Polls every minute for new emails\n- Filters by keywords in subject\n- Downloads attachments"
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "deal_id",
+              "value": "={{ 'DEAL-' + $now.format('yyyy-MM-dd-HHmmss') + '-' + $json.id.substring(0,6) }}"
+            },
+            {
+              "name": "sender_email",
+              "value": "={{ $json.from.value[0].address }}"
+            },
+            {
+              "name": "sender_name",
+              "value": "={{ $json.from.value[0].name || $json.from.value[0].address }}"
+            },
+            {
+              "name": "email_subject",
+              "value": "={{ $json.subject }}"
+            },
+            {
+              "name": "received_date",
+              "value": "={{ $json.date }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "abaa8eee-3600-42f3-8d57-ba7e55cfe951",
+      "name": "Structure Email Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        -1220,
+        560
+      ],
+      "notes": "Creates initial deal object with email metadata"
+    },
+    {
+      "parameters": {
+        "operation": "binaryToPropery",
+        "options": {
+          "keepSource": "both"
+        }
+      },
+      "id": "4d706a02-ebe5-47ab-b4ec-f67198d758b5",
+      "name": "Extract PDF Text",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        -2060,
+        1200
+      ],
+      "notes": "MODULE 2: Document Processing\n- Extracts text from PDF\n- Returns as 'text' field"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "chatgpt-4o-latest",
+          "mode": "list",
+          "cachedResultName": "CHATGPT-4O-LATEST"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "You are an expert investment analyst. Extract key information from investment teasers and deal documents. Return a valid JSON object with the extracted information. Be precise with numbers and metrics.",
+              "role": "system"
+            },
+            {
+              "content": "=Extract the following information from this investment teaser:\n\n{{ $json.text}}\n\nReturn a JSON object with these fields:\n{\n  \"company_name\": \"string\",\n  \"company_description\": \"brief description\",\n  \"deal_type\": \"Seed/Series A/Series B/etc\",\n  \"sector\": \"string\",\n  \"geography\": \"country or region\",\n  \"revenue_annual\": number or null,\n  \"revenue_growth_rate\": number (as decimal, e.g. 0.5 for 50%) or null,\n  \"ebitda_margin\": number (as decimal) or null,\n  \"employee_count\": number or null,\n  \"valuation_sought\": number or null,\n  \"deal_size\": number or null,\n  \"executive_summary\": \"2-3 sentence summary\",\n  \"missing_critical_data\": [\"list of important missing metrics\"]\n}\n\nIf a field is not found in the document, use null. For revenue and valuations, convert to annual USD amounts."
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "options": {}
+      },
+      "id": "a07f6f99-9c5c-459c-88f8-da2b9faa7daa",
+      "name": "OpenAI Extract Metrics",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1,
+      "position": [
+        -800,
+        380
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "9yrgpAk5t6em7mt2",
+          "name": "OpenAi account"
+        }
+      },
+      "notes": "MODULE 3: AI Analysis\n- Uses GPT-4o-mini for cost efficiency\n- Extracts structured data\n- JSON response format"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse the AI response and merge with email data\nconst emailData = $node['Structure Email Data'].json;\nconst extractedText = $node['Extract PDF Text'].json.text;\nlet aiAnalysis;\n\ntry {\n  // Parse the AI response\n  aiAnalysis = JSON.parse($json.message.content);\n} catch (error) {\n  // Fallback if JSON parsing fails\n  aiAnalysis = {\n    company_name: $json.message.content.company_name,\n    error: \"Failed to parse AI response\",\n    missing_critical_data: [\"all\"]\n  };\n}\n\n// Create comprehensive deal object\nconst dealObject = {\n  // Email metadata\n  deal_id: emailData.deal_id,\n  email_data: {\n    sender_email: emailData.sender_email,\n    sender_name: emailData.sender_name,\n    subject: emailData.email_subject,\n    received_date: emailData.received_date\n  },\n  \n  // Extracted data\n  company_info: {\n    name: aiAnalysis.company_name,\n    description: aiAnalysis.company_description,\n    sector: aiAnalysis.sector,\n    geography: aiAnalysis.geography,\n    employee_count: aiAnalysis.employee_count\n  },\n  \n  // Financial metrics\n  financials: {\n    revenue_annual: aiAnalysis.revenue_annual,\n    revenue_growth_rate: aiAnalysis.revenue_growth_rate,\n    ebitda_margin: aiAnalysis.ebitda_margin,\n    valuation_sought: aiAnalysis.valuation_sought,\n    deal_size: aiAnalysis.deal_size,\n    deal_type: aiAnalysis.deal_type\n  },\n  \n  // Analysis\n  analysis: {\n    executive_summary: aiAnalysis.executive_summary,\n    missing_data: aiAnalysis.missing_critical_data || [],\n    extracted_text_length: extractedText.length\n  },\n  \n  // Tracking\n  processing_status: \"extracted\",\n  timestamp: new Date().toISOString()\n};\n\nreturn dealObject;"
+      },
+      "id": "1eb3e4ec-d79d-4940-9432-4ad8701fe43a",
+      "name": "Merge & Structure Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        -400,
+        620
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.analysis.missing_data.length > 0 && ['revenue_annual', 'ebitda_margin', 'valuation_sought'].some(field => $json.analysis.missing_data.includes(field)) }}",
+              "operation": "notEqual",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "1f38f6b5-c0c5-432b-af43-8562051c8591",
+      "name": "Need Enrichment?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -120,
+        940
+      ],
+      "notes": "MODULE 4: Check if enrichment needed"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.perplexity.ai/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "=\n{\n  \"model\": \"sonar\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a researcher in a business development team. Your job is to find as much research as you can about a  company. You must ensure your research is for the correct company and is highly accurate. Your research must always include what the prospect company does in detail. Your research should also highlight any recent news or accomplishments from the company. if you dont find anything you should state that as well\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Find the following missing financial data for {{ $json.company_info.name }}: {{ $json.analysis.missing_data.join(', ') }}. Provide only factual data with numbers. Focus on: annual revenue, EBITDA margins, and recent valuation. Keep response under 100 words.\"\n    }\n  ]\n}",
+        "options": {
+          "timeout": 5000
+        }
+      },
+      "id": "3c972ef2-c912-4f31-8c30-ed8c5e46af6f",
+      "name": "Perplexity Quick Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        100,
+        460
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "a1dAUq5opufWI5Xr",
+          "name": "Perplexity"
+        }
+      },
+      "notes": "MODULE 4: Data Enrichment\n- Only runs if critical data missing\n- Quick 5-second timeout\n- Uses small model for cost"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract enrichment data from Perplexity response\nconst dealData = $node['Merge & Structure Data'].json;\nconst enrichmentResponse = $json.choices[0].message.content;\n\n// Simple regex patterns to extract common financial data\nconst revenueMatch = enrichmentResponse.match(/(?:revenue|ARR)[^\\d]*(\\d+(?:\\.\\d+)?)[^\\d]*(?:million|M)/i);\nconst ebitdaMatch = enrichmentResponse.match(/(?:EBITDA|margin)[^\\d]*(\\d+(?:\\.\\d+)?)[^\\d]*(?:%|percent)/i);\nconst valuationMatch = enrichmentResponse.match(/(?:valuation|valued)[^\\d]*(\\d+(?:\\.\\d+)?)[^\\d]*(?:million|M|billion|B)/i);\n\n// Update deal data with any found enrichment\nif (revenueMatch && !dealData.financials.revenue_annual) {\n  dealData.financials.revenue_annual = parseFloat(revenueMatch[1]) * 1000000;\n  dealData.analysis.enriched_fields = dealData.analysis.enriched_fields || [];\n  dealData.analysis.enriched_fields.push('revenue_annual');\n}\n\nif (ebitdaMatch && !dealData.financials.ebitda_margin) {\n  dealData.financials.ebitda_margin = parseFloat(ebitdaMatch[1]) / 100;\n  dealData.analysis.enriched_fields = dealData.analysis.enriched_fields || [];\n  dealData.analysis.enriched_fields.push('ebitda_margin');\n}\n\nif (valuationMatch && !dealData.financials.valuation_sought) {\n  const multiplier = valuationMatch[0].toLowerCase().includes('billion') ? 1000000000 : 1000000;\n  dealData.financials.valuation_sought = parseFloat(valuationMatch[1]) * multiplier;\n  dealData.analysis.enriched_fields = dealData.analysis.enriched_fields || [];\n  dealData.analysis.enriched_fields.push('valuation_sought');\n}\n\n// Add enrichment metadata\ndealData.enrichment = {\n  performed: true,\n  source: 'perplexity',\n  raw_response: enrichmentResponse,\n  timestamp: new Date().toISOString()\n};\n\nreturn dealData;"
+      },
+      "id": "62a2de1e-418c-4f68-9a6a-f2c9527f3285",
+      "name": "Parse Enrichment Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        400,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "criteria_config",
+              "value": "{\n  \"min_revenue\": 5000000,\n  \"max_revenue\": 500000000,\n  \"min_growth_rate\": 0.5,\n  \"min_ebitda_margin\": 0.15,\n  \"max_deal_size\": 50000000,\n  \"allowed_sectors\": [\"SaaS\", \"FinTech\", \"HealthTech\", \"Enterprise Software\", \"B2B\", \"Technology\"],\n  \"allowed_geographies\": [\"US\", \"USA\", \"United States\", \"Canada\", \"UK\", \"United Kingdom\"],\n  \"deal_types\": [\"Series A\", \"Series B\", \"Growth Equity\"]\n}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "401db5e3-6014-497b-99bb-1819fac6a4b8",
+      "name": "Investment Criteria Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        660,
+        940
+      ],
+      "notes": "EDIT THIS NODE to set your investment criteria:\n- All amounts in USD\n- Growth rate as decimal (0.5 = 50%)\n- EBITDA margin as decimal (0.15 = 15%)"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get deal data - handle both enriched and non-enriched paths\nlet dealData;\ntry {\n  // Try to get enriched data first\n  dealData = $node['Parse Enrichment Data'].json;\n} catch (error) {\n  // Fallback to non-enriched data\n  dealData = $node['Merge & Structure Data'].json;\n}\n\n// Parse criteria configuration\nconst criteria = JSON.parse($json.criteria_config);\n\n// Initialize scoring\nlet score = 0;\nlet maxScore = 0;\nconst results = [];\nconst passed = [];\nconst failed = [];\n\n// Helper function to check criteria\nfunction checkCriteria(name, value, check, weight = 10) {\n  maxScore += weight;\n  if (value === null || value === undefined) {\n    results.push(`${name}: No data available`);\n    failed.push(`${name} - missing data`);\n    return;\n  }\n  \n  if (check(value)) {\n    score += weight;\n    passed.push(name);\n    results.push(`✓ ${name}: ${value}`);\n  } else {\n    failed.push(`${name} - value: ${value}`);\n    results.push(`✗ ${name}: ${value}`);\n  }\n}\n\n// Check each criteria\ncheckCriteria(\n  'Revenue', \n  dealData.financials.revenue_annual,\n  (val) => val >= criteria.min_revenue && val <= criteria.max_revenue,\n  20\n);\n\ncheckCriteria(\n  'Growth Rate',\n  dealData.financials.revenue_growth_rate,\n  (val) => val >= criteria.min_growth_rate,\n  15\n);\n\ncheckCriteria(\n  'EBITDA Margin',\n  dealData.financials.ebitda_margin,\n  (val) => val >= criteria.min_ebitda_margin,\n  15\n);\n\ncheckCriteria(\n  'Deal Size',\n  dealData.financials.deal_size || dealData.financials.valuation_sought,\n  (val) => val <= criteria.max_deal_size,\n  10\n);\n\ncheckCriteria(\n  'Sector',\n  dealData.company_info.sector,\n  (val) => criteria.allowed_sectors.some(s => \n    val && val.toLowerCase().includes(s.toLowerCase())\n  ),\n  20\n);\n\ncheckCriteria(\n  'Geography',\n  dealData.company_info.geography,\n  (val) => criteria.allowed_geographies.some(g => \n    val && val.toLowerCase().includes(g.toLowerCase())\n  ),\n  20\n);\n\n// Calculate final score\nconst finalScore = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;\n\n// Determine FIT/NO-FIT (threshold at 60%)\nconst decision = finalScore >= 60 ? 'FIT' : 'NO-FIT';\n\n// Add criteria results to deal data\ndealData.criteria_match = {\n  decision: decision,\n  score: finalScore,\n  max_score: 100,\n  passed_criteria: passed,\n  failed_criteria: failed,\n  detailed_results: results,\n  timestamp: new Date().toISOString()\n};\n\n// Set processing status\ndealData.processing_status = 'criteria_evaluated';\n\nreturn dealData;"
+      },
+      "id": "109fdd37-8da6-424d-be16-3711391e4329",
+      "name": "Evaluate Criteria",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        760,
+        540
+      ],
+      "notes": "MODULE 5: Criteria Matching\n- Scores deal against investment criteria\n- 60% threshold for FIT decision\n- Weighted scoring system"
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "workflow_output",
+              "value": "=## Deal Analysis Complete!\n\n**Deal ID:** {{ $json.deal_id }}\n**Company:** {{ $json.company_info.name }}\n**Decision:** {{ $json.criteria_match.decision }}\n**Score:** {{ $json.criteria_match.score }}/100\n\n### Next Steps:\n{{ $json.criteria_match.decision === 'FIT' ? '- Trigger Module 7: Deep Research\\n- Create comprehensive Notion entry\\n- Send priority alert' : '- Create basic Notion entry\\n- Draft decline email\\n- Archive' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8377927c-09a1-498c-b74a-da1933f029b3",
+      "name": "Output Summary",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        480
+      ],
+      "notes": "Final output with complete deal object\nReady for Module 6A/6B routing based on FIT/NO-FIT"
+    },
+    {
+      "parameters": {
+        "jsCode": "// This runs once with ALL items from Filter in `items`\nconst output = [];\n\nfor (const item of items) {\n  const { json, binary = {} } = item;\n  // For each attachment key, push a new item\n  for (const key of Object.keys(binary)) {\n    output.push({\n      json,\n      binary: { data: binary[key] },\n    });\n  }\n}\n\n// Return the array of split+normalized items\nreturn output;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1560,
+        560
+      ],
+      "id": "521e2a0e-dd60-4a2d-a629-0804a0fddc9e",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "2374cb0d-576b-4ef6-9abd-2c05e980f64a",
+                    "leftValue": "={{$binary.data.fileExtension}}",
+                    "rightValue": "pdf",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "8dbf05f9-da48-4071-bb27-b7390e936026",
+                    "leftValue": "={{$binary.data.fileExtension}}",
+                    "rightValue": "x",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "280e8759-2940-4f34-b648-de731d4d20ab",
+                    "leftValue": "={{$binary.data.fileExtension}}",
+                    "rightValue": "txt",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {
+          "allMatchingOutputs": true
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -1720,
+        1220
+      ],
+      "id": "ab3d5e2b-8207-453d-8350-93fe63756d2c",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        -980,
+        880
+      ],
+      "id": "ba9c75c1-833e-4b86-b93e-2307b559785a",
+      "name": "Extract from File1"
+    },
+    {
+      "parameters": {
+        "operation": "xlsx",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        -780,
+        1120
+      ],
+      "id": "47f29b5b-63e5-41da-9009-c6edf16d4ee2",
+      "name": "Extract from File2"
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        -880,
+        1360
+      ],
+      "id": "09581c96-5adc-4cb6-87c4-549fb75ec3f8",
+      "name": "Extract from File3"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an AI assistant for a private equity professional. I need you to draft a professional and concise Gmail message to pass on an investment opportunity. The recipient is likely an investment banker or a business broker who brought us the deal.\n\nThe primary goal is to clearly decline this specific opportunity while strongly encouraging them to send us future deals. Maintaining a good relationship with the deal source is critical.\n\nDraft an email with the following elements:\n\nSubject Line: Following up on Opportunity \".\n\nOpening: Thank the recipient whose name is  {{ $json.email_data.sender_name }} for sharing the opportunity and for the materials they provided (e.g., the CIM, management presentation, etc.). Acknowledge the work they've put in.\n\nThe Decision: State clearly and respectfully that after internal review, you have decided to pass on the opportunity at this time. Use direct and standard industry language like \"we will not be pursuing the opportunity further\" or \"we've decided to pass on this one.\"\n\nThe \"Why\" (Keep it high-level): The reason for declining should be professional and non-critical of the business itself. The best reason is a lack of fit with our fund's strategy. Use one of these phrases:\n\n\"It's not a perfect fit for our current investment mandate.\"\n\"It falls a bit outside our core investment thesis at the moment.\"\n\"After careful review, we determined it wasn't the right fit for our platform.\"\nRelationship Affirmation (Most Important Part): Explicitly state that you value the relationship and appreciate them thinking of you.\n\nCall to Action for Future Deals: This is key. End by encouraging them to send future opportunities. Say something like:\n\n\"Please keep us in mind for future opportunities.\"\n\"We look forward to seeing the next deal you bring to market.\"\n\"We were impressed with the presentation and would be very interested in reviewing other opportunities you source that fit [mention a specific industry or size if you want, e.g., 'the B2B software space'].\"\nClosing: A simple and professional closing like \"Best regards\" or \"All the best.\"\n\n\n\nuse this summary for context of the deal and summary of it to help draft your know \n \nContext: {{ $json.criteria_match.failed_criteria }}{{ $json.workflow_output }}\nDeal_Fit: {{ $json.criteria_match.decision }}\n\n\n Also custom notification message to send to me letting me know you have added a draft to my gmail for whoever the person that messaged us name and we should take a look  is and add to output parser. \n\nContext to use for the draft:\n\nMy Name: Bendly Jean\nMy Title: CEO \nMy Firm: RVD Equity  ",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        1400,
+        400
+      ],
+      "id": "1a8adf33-0152-41a3-b7bd-a6c777822ce8",
+      "name": "AI Agent1"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"Subject\": \"<string>\",\n  \"Email\": \"<string>\",\n  \"Notification\": \"<string>\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        1620,
+        660
+      ],
+      "id": "74b736d8-effa-473d-8baa-0c82174fd671",
+      "name": "Structured Output Parser2"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4.1-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1380,
+        640
+      ],
+      "id": "4d66e551-7980-4eb9-92b5-063af5a8be98",
+      "name": "OpenAI Chat Model2",
+      "credentials": {
+        "openAiApi": {
+          "id": "9yrgpAk5t6em7mt2",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "subject": "={{ $json.output.Subject }}",
+        "message": "={{ $json.output.Email }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1860,
+        420
+      ],
+      "id": "e5eed656-79ee-40ce-9981-7161fe769947",
+      "name": "Gmail",
+      "webhookId": "d70f8a35-d0d6-4825-8033-2b5dc911546d",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1t8C9DsZvFGKtqqs",
+          "name": "Gmail account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=# FINANCIAL DOCUMENT INVESTMENT ANALYSIS PROMPT\n\n## PRIMARY OBJECTIVE\nYou are tasked with conducting a comprehensive investment analysis and due diligence assessment based on financial documents, prospectuses, and data files. Using ALL provided data, you MUST formulate a detailed investment research report that evaluates the target company as a potential investment opportunity.\n\n\n\nHere is the data \n{{ $json.enrichment.raw_response }}\n{{ $json.enrichment.raw_response }}\n{{ $('Merge & Structure Data').item.json.analysis.missing_data }}\n{{ $('Perplexity Quick Search').item.json.choices[0].message.content }}\n\n\n\n## CRITICAL MANDATE\n**INVESTMENT FOCUS**: Analyze financial documents, prospectuses, and data files to deliver a full investment analysis including:\n- Investment thesis development based on financial data\n- Financial performance and projections analysis\n- Risk assessment from document disclosures\n- Market opportunity evaluation from prospectus materials\n- Valuation analysis and investment recommendations\n- Strategic recommendations for investment decision-making\n\n## DOCUMENT ANALYSIS FRAMEWORK\n\n### Section 1: Executive Investment Summary\n**Investment Thesis Overview**\n- Clear investment recommendation (BUY/HOLD/PASS)\n- Key value drivers identified from financial documents\n- Critical risk factors disclosed in materials\n- Expected returns based on financial projections\n- Strategic fit assessment with investment criteria\n\n**Key Investment Highlights from Documents**\n- Financial performance trends and growth metrics\n- Market opportunity size from prospectus data\n- Competitive positioning disclosed in materials\n- Management discussion and analysis insights\n- Capital structure and financing requirements\n\n### Section 2: Comprehensive Financial Document Analysis\n\n#### A. Financial Performance Analysis\n**Investment Perspective**: Historical and projected financial health\n- Revenue growth trends and sustainability\n- Profitability analysis (gross, operating, net margins)\n- Cash flow generation and quality assessment\n- Working capital management efficiency\n- Capital expenditure requirements and ROI\n\n#### B. Balance Sheet & Capital Structure Analysis\n**Investment Perspective**: Financial strength and leverage assessment\n- Asset quality and composition analysis\n- Debt structure and covenant compliance\n- Liquidity position and cash management\n- Capital allocation strategy and efficiency\n- Shareholder equity and dilution analysis\n\n#### C. Business Model & Market Analysis\n**Investment Perspective**: From prospectus and business descriptions\n- Business model evaluation and scalability\n- Market size and growth opportunity assessment\n- Competitive landscape and positioning\n- Customer base analysis and concentration risk\n- Geographic and segment diversification\n\n#### D. Risk Factor Assessment\n**Investment Perspective**: Risk disclosures and mitigation\n- Business and operational risks identified\n- Market and industry-specific risks\n- Financial and liquidity risk factors\n- Regulatory and compliance risks\n- Environmental, social, and governance risks\n\n#### E. Management Discussion & Analysis\n**Investment Perspective**: Leadership insights and strategy\n- Management's strategic vision and execution plans\n- Key performance indicators and targets\n- Capital allocation priorities and strategies\n- Growth initiatives and investment plans\n- Operational challenges and solutions\n\n#### F. Valuation & Investment Metrics\n**Investment Perspective**: Investment attractiveness assessment\n- Multiple-based valuation analysis (P/E, EV/EBITDA, etc.)\n- Discounted cash flow analysis from projections\n- Comparable company analysis (if data available)\n- Return on investment calculations\n- Break-even and payback period analysis\n\n#### G. Use of Proceeds & Investment Structure\n**Investment Perspective**: Capital deployment analysis\n- Intended use of investment capital\n- Growth and expansion plans\n- Debt refinancing or restructuring\n- Working capital requirements\n- Strategic initiatives funding\n\n## DATA SYNTHESIS REQUIREMENTS FOR INVESTMENT ANALYSIS\n\nTransform document data into investment intelligence:\n\n**Financial Statements (Excel/PDF)** → **Performance Analysis**\n- Historical trends and growth patterns\n- Margin analysis and operational efficiency\n- Cash generation and capital requirements\n\n**Prospectus/Offering Memorandum** → **Investment Opportunity Assessment**\n- Business model and market opportunity\n- Risk factors and mitigation strategies\n- Management strategy and execution plans\n\n**Management Presentations** → **Strategic Vision Analysis**\n- Growth strategy and market expansion\n- Competitive positioning and advantages\n- Capital allocation and investment priorities\n\n**Due Diligence Materials** → **Risk and Return Evaluation**\n- Operational due diligence findings\n- Market research and validation\n- Financial projections and assumptions\n\n## INVESTMENT DECISION FRAMEWORK\n\n### Investment Scoring Matrix:\n- **Financial Performance**: Growth, profitability, cash flow (1-10)\n- **Market Opportunity**: Size, growth, competitive position (1-10)\n- **Business Model**: Scalability, sustainability, differentiation (1-10)\n- **Management Quality**: Strategy, execution, track record (1-10)\n- **Risk Assessment**: Overall risk level (1-10, lower is better)\n- **Valuation**: Attractiveness relative to alternatives (1-10)\n\n### Investment Recommendation Categories:\n- **STRONG BUY**: High conviction investment opportunity\n- **BUY**: Attractive investment with managed risks\n- **HOLD**: Monitor for better terms or developments\n- **PASS**: Does not meet investment criteria\n\n## HTML REPORT STRUCTURE FOR INVESTMENT ANALYSIS\n\n### Financial Investment Dashboard:\n- Investment recommendation summary card\n- Key financial metrics and ratios\n- Performance trend visualizations\n- Risk/return assessment matrix\n\n### Professional Investment Report Format:\n- Executive investment summary (2-3 paragraphs)\n- Financial performance analysis with charts/tables\n- Investment thesis with supporting data\n- Risk assessment matrix from document disclosures\n- Valuation analysis and comparables\n- Investment terms and structure recommendations\n\n## DOCUMENT PROCESSING REQUIREMENTS\n\n**PDF Analysis**: Extract and analyze:\n- Financial statements and footnotes\n- Management discussion and analysis\n- Risk factor disclosures\n- Business description and strategy\n- Market analysis and competitive positioning\n\n**Excel File Analysis**: Process and evaluate:\n- Financial models and projections\n- Historical performance data\n- Sensitivity analysis and scenarios\n- Valuation calculations and assumptions\n- Capital structure and financing details\n\n## DELIVERABLE SPECIFICATIONS\n\n**PRIMARY OUTPUT**: Financial Investment Analysis HTML Report containing:\n1. Clear investment recommendation based on financial analysis\n2. Comprehensive financial performance evaluation\n3. Risk/return analysis from document disclosures\n4. Valuation assessment and investment attractiveness\n5. Strategic recommendations and next steps\n\n**INVESTMENT ANALYSIS STANDARDS**:\n- Institutional-quality financial analysis\n- Private equity/investment banking level due diligence\n- Data-driven investment recommendations\n- Professional formatting for investment committees\n- Quantitative analysis with supporting documentation\n\n## CONTEXT FOR INVESTMENT ANALYSIS\n- **Investment Professional**: Bendly Jean, CEO\n- **Investment Firm**: RVD Equity\n- **Analysis Purpose**: Investment opportunity evaluation from financial documents\n- **Decision Audience**: Investment committee and senior partners\n- **Expected Outcome**: Go/No-go investment recommendation with financial rationale\n\n**FINAL MANDATE**: Transform all provided financial documents and data files into a comprehensive investment analysis that enables informed capital allocation decisions. Extract maximum analytical value from prospectuses, financial statements, and related materials to deliver actionable investment intelligence.",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        880,
+        -300
+      ],
+      "id": "f80d70de-4288-4704-990b-1967806762ba",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4.1-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        820,
+        140
+      ],
+      "id": "c3be1931-f451-4430-807f-1f93c5284851",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "9yrgpAk5t6em7mt2",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "html": "{{ $json.output }}"
+      },
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        1240,
+        -300
+      ],
+      "id": "d794d6d2-e628-4828-ac04-cf06a5dac2f3",
+      "name": "HTML"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "chatgpt-4o-latest",
+          "mode": "list",
+          "cachedResultName": "CHATGPT-4O-LATEST"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Your goal is to clean up the html file just give me the html file   {{ $json.html }}",
+              "role": "system"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        1440,
+        -300
+      ],
+      "id": "1944adf1-216f-453c-ae4f-f050581fa4fd",
+      "name": "OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "9yrgpAk5t6em7mt2",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "html": "<!DOCTYPE html>\n{{ $json.message.content }}"
+      },
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        1800,
+        -300
+      ],
+      "id": "dd6dba3a-5751-4ae7-b949-58c5af58105b",
+      "name": "HTML1"
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "databaseId": {
+          "__rl": true,
+          "value": "8716f31f-bb42-4ee3-83bc-350b3600be93",
+          "mode": "list",
+          "cachedResultName": "WAVING PANDAS",
+          "cachedResultUrl": "https://www.notion.so/8716f31fbb424ee383bc350b3600be93"
+        },
+        "title": "INVESTMENT ANALYSIS ",
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Name|title",
+              "title": "={{ $('Merge & Structure Data').item.json.company_info.name }}"
+            }
+          ]
+        },
+        "blockUi": {
+          "blockValues": [
+            {
+              "textContent": "={{ $json.html }}"
+            },
+            {}
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [
+        2020,
+        -300
+      ],
+      "id": "4d1149b9-0be6-4cc1-9981-47fd2d7010c4",
+      "name": "Notion",
+      "credentials": {
+        "notionApi": {
+          "id": "M2ukht9dY1XzuLjw",
+          "name": "Notion account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structure Email Data": {
+      "main": [
+        [
+          {
+            "node": "Extract PDF Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract PDF Text": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Extract Metrics": {
+      "main": [
+        [
+          {
+            "node": "Merge & Structure Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge & Structure Data": {
+      "main": [
+        [
+          {
+            "node": "Need Enrichment?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Need Enrichment?": {
+      "main": [
+        [
+          {
+            "node": "Perplexity Quick Search",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Investment Criteria Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Perplexity Quick Search": {
+      "main": [
+        [
+          {
+            "node": "Parse Enrichment Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Enrichment Data": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Investment Criteria Config": {
+      "main": [
+        [
+          {
+            "node": "Evaluate Criteria",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate Criteria": {
+      "main": [
+        [
+          {
+            "node": "Output Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Structure Email Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Extract from File1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extract from File2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extract from File3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File1": {
+      "main": [
+        [
+          {
+            "node": "OpenAI Extract Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File2": {
+      "main": [
+        [
+          {
+            "node": "OpenAI Extract Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File3": {
+      "main": [
+        [
+          {
+            "node": "OpenAI Extract Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent1": {
+      "main": [
+        [
+          {
+            "node": "Gmail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser2": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Output Summary": {
+      "main": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML": {
+      "main": [
+        [
+          {
+            "node": "OpenAI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI": {
+      "main": [
+        [
+          {
+            "node": "HTML1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML1": {
+      "main": [
+        [
+          {
+            "node": "Notion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "a126a592-3be0-4f79-93ce-8c0b4cba0993",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8d7e4f195bf3ce185fb2c0f9d1d679ceb85d8a160024a4c53914e80e22ccb014"
+  },
+  "id": "WRzURxDTZ7F9FkkU",
+  "tags": [
+    {
+      "createdAt": "2025-05-29T16:54:01.512Z",
+      "updatedAt": "2025-05-29T16:54:01.512Z",
+      "id": "AL9rgH5riuHX2PcN",
+      "name": "Bentley Project"
+    }
+  ]
+}
